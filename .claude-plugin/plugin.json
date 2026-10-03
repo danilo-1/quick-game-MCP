@@ -1,0 +1,18 @@
+{
+  "name": "quick-game",
+  "displayName": "Quick Game",
+  "version": "0.2.0",
+  "description": "Crie jogos só idealizando: 12 etapas guiadas do conceito ao lançamento, 87 skills de game dev e protótipos HTML5 jogáveis gerados na hora.",
+  "author": { "name": "Danilo", "url": "https://github.com/danilo-1" },
+  "homepage": "https://github.com/danilo-1/quick-game-MCP",
+  "repository": "https://github.com/danilo-1/quick-game-MCP",
+  "license": "Apache-2.0",
+  "keywords": ["gamedev", "game-design", "gdd", "prototipo", "jogos", "mcp"],
+  "skills": ["./skills/nucleo/"],
+  "mcpServers": {
+    "quick-game": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/iniciar.mjs"]
+    }
+  }
+}

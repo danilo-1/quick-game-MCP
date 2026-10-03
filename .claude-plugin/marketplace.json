@@ -1,0 +1,12 @@
+{
+  "name": "quick-game-mcp",
+  "description": "Marketplace do Quick Game: criação de jogos guiada para o Claude Code.",
+  "owner": { "name": "Danilo", "url": "https://github.com/danilo-1" },
+  "plugins": [
+    {
+      "name": "quick-game",
+      "source": "./",
+      "description": "Crie jogos só idealizando: etapas guiadas, skills de game dev e protótipos HTML5 jogáveis."
+    }
+  ]
+}

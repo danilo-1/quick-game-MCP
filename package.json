@@ -1,6 +1,6 @@
 {
   "name": "quick-game-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Servidor MCP especializado em criação de jogos: guia todas as etapas, do conceito ao lançamento, e abstrai a camada técnica.",
   "type": "module",
   "bin": {

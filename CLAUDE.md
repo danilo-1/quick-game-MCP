@@ -1,19 +1,15 @@
 # quick-game-mcp
 
-Este repositório é um servidor MCP para criar jogos. Ao abrir o Claude Code aqui, o servidor
-`quick-game` (definido em `.mcp.json`) sobe sozinho: na primeira vez ele instala as dependências e compila.
+Repositório do plugin `quick-game` para o Claude Code: um servidor MCP de criação de jogos, skills de
+game dev e comandos. A raiz é ao mesmo tempo o plugin (`.claude-plugin/plugin.json`) e o marketplace
+(`.claude-plugin/marketplace.json`).
 
-## Quando o usuário quiser criar ou continuar um jogo
+## Desenvolvendo
 
-Use as ferramentas do servidor `quick-game` em vez de escrever código à mão: `criar_jogo`,
-`guia_etapa`, `salvar_etapa`, `gerar_prototipo`, `gerar_gdd`. Fale em português, não peça
-decisões técnicas e leia as skills recomendadas (`ler_skill`) antes de cada etapa. Os jogos ficam
-em `jogos/` (fora do git).
-
-## Desenvolvendo o próprio servidor
-
-- `npm run build` compila `src/` para `dist/`; `npm test` roda o teste de ponta a ponta.
+- `npm install` instala e compila; `npm test` roda o teste de ponta a ponta; `claude plugin validate .` valida o plugin.
+- Para testar o plugin local: `claude --plugin-dir .` (depois de mudar `src/`, use `/reload-plugins`).
 - Etapas: `src/stages.ts`. Roteador de gênero/engine: `src/skills.ts`. Modelos de protótipo: `templates/prototipos/`.
-- Skills novas: uma pasta com `SKILL.md` em `skills/` (veja `skills/README.md`). Coleções de terceiros
-  vão em `skills/comunidade/<nome>/` com o arquivo de licença original.
-- Depois de mudar `src/`, reinicie o servidor com `/mcp` no Claude Code.
+- Skills do núcleo (`skills/nucleo/`) são também skills nativas do plugin. Skills novas: uma pasta com
+  `SKILL.md` em `skills/` (veja `skills/README.md`). Coleções de terceiros vão em `skills/comunidade/<nome>/`
+  com o arquivo de licença original.
+- Comandos do plugin ficam em `commands/`. Ao mudar algo visível ao usuário, suba `version` em `.claude-plugin/plugin.json`.

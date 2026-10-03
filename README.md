@@ -42,36 +42,45 @@ ao lançamento, e cuida da parte técnica: o usuário só precisa idealizar.
 | `gerar_prototipo` | Protótipo HTML5 (`plataforma`, `topdown`, `nave`, `narrativa`) com ajustes de sensação |
 | `gerar_gdd`, `gerar_backlog` | Documento de design e lista de tarefas em markdown |
 
-**Prompts** (aparecem como comandos no cliente): `novo-jogo`, `continuar-jogo`, `brainstorm`, `ajustar-sensacao`.
+**Prompts MCP** (para clientes sem o plugin): `novo-jogo`, `continuar-jogo`, `brainstorm`, `ajustar-sensacao`.
 **Recursos**: `skill://{nome}` e `jogo://{slug}/gdd`.
 
 ## Instalação
 
-Requer Node 18+ e git.
+Requer Node 18+ e o [Claude Code](https://code.claude.com).
 
-### Opção 1: abrir o repositório no Claude Code (configuração automática)
+### Como plugin do Claude Code (recomendado)
+
+No terminal:
 
 ```bash
-git clone https://github.com/danilo-1/quick-game-MCP.git
-cd quick-game-MCP
-claude
+claude plugin marketplace add danilo-1/quick-game-MCP
+claude plugin install quick-game@quick-game-mcp
 ```
 
-O `.mcp.json` registra o servidor `quick-game` e o `.claude/settings.json` já o aprova. Na primeira
-execução ele instala as dependências e compila sozinho (leva alguns segundos). Confira com `/mcp`.
-Depois é só dizer *"Quero criar um jogo de plataforma com um gato astronauta"* ou usar o prompt
-`/mcp__quick-game__novo-jogo`. Os jogos ficam em `jogos/`.
+Ou, dentro de uma sessão do Claude Code: `/plugin marketplace add danilo-1/quick-game-MCP` e depois
+`/plugin install quick-game@quick-game-mcp`.
 
-### Opção 2: instalar em qualquer pasta, direto do GitHub
+O plugin traz tudo junto: o servidor MCP (na primeira execução ele instala as dependências e compila
+sozinho), as 12 skills do núcleo como skills nativas e os comandos:
+
+| Comando | O que faz |
+|---|---|
+| `/quick-game:novo-jogo [ideia]` | Cria um jogo do zero, etapa por etapa |
+| `/quick-game:continuar-jogo [nome]` | Retoma um jogo de onde parou |
+| `/quick-game:brainstorm [tema]` | Propõe 5 conceitos de jogo |
+| `/quick-game:prototipo [jogo] [feedback]` | Gera ou ajusta o protótipo jogável |
+
+Confira com `/mcp` (o servidor aparece como `plugin:quick-game:quick-game`). Os jogos são salvos em
+`./jogos` da pasta onde o Claude foi aberto. Para atualizar: `claude plugin update quick-game@quick-game-mcp`.
+
+### Só o servidor MCP (outros clientes)
 
 ```bash
 claude mcp add quick-game --scope user -- npx -y github:danilo-1/quick-game-MCP
 ```
 
-Com `--scope user` o servidor fica disponível em todos os seus projetos. Os jogos são salvos em
-`./jogos` da pasta onde o Claude foi aberto (mude com `-e QUICK_GAME_WORKSPACE=/caminho`).
-
-### Opção 3: Claude Desktop (`claude_desktop_config.json`)
+Claude Desktop (`claude_desktop_config.json`):
 
 ```json
 {
@@ -88,8 +97,10 @@ Com `--scope user` o servidor fica disponível em todos os seus projetos. Os jog
 ### Desenvolvimento
 
 ```bash
-npm install     # instala e compila
-npm test        # teste de ponta a ponta com um cliente MCP real
+npm install                    # instala e compila
+npm test                       # teste de ponta a ponta com um cliente MCP real
+claude plugin validate .       # valida plugin e marketplace
+claude --plugin-dir .          # roda o Claude Code com o plugin desta pasta
 npx @modelcontextprotocol/inspector node dist/index.js   # testar as ferramentas numa interface web
 ```
 

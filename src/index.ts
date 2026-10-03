@@ -24,7 +24,7 @@ const skills = new SkillRegistry([
 const store = new ProjectStore(path.resolve(process.env.QUICK_GAME_WORKSPACE ?? path.join(process.cwd(), "jogos")));
 
 const server = new McpServer(
-  { name: "quick-game-mcp", version: "0.1.0" },
+  { name: "quick-game-mcp", version: "0.2.0" },
   {
     instructions: [
       "Servidor para criar jogos com o usuário focado apenas em ideias. Regras:",
