@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITULO__</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; display: grid; place-items: center; font-family: system-ui, sans-serif; }
+  canvas { max-width: 100vw; max-height: 100vh; border-radius: 6px; }
+</style>
+</head>
+<body>
+<canvas id="jogo" width="540" height="720"></canvas>
+<script>
+// Protótipo gerado pelo quick-game-mcp (modelo: nave — jogos de tiro / shmup).
+// Ajuste o jogo mudando os valores de CONFIG.
+const CONFIG = Object.assign({
+  titulo: "Jogo",
+  subtitulo: "",
+  objetivo: "Destrua os invasores e sobreviva até o chefe",
+  velocidade: 5,
+  vidas: 3,
+  cadenciaTiro: 9,
+  velocidadeTiro: 11,
+  frequenciaInimigos: 50,   // quadros entre inimigos (menor = mais inimigos)
+  velocidadeInimigo: 2.2,
+  pontosParaChefe: 40,
+  vidaChefe: 60,
+  corFundo: "#0b0b1e",
+  corJogador: "#29adff",
+  corInimigo: "#ff004d",
+  corDestaque: "#ffec27",
+  corTexto: "#fff1e8",
+}, __AJUSTES__);
+
+const W = 540, H = 720, cv = document.getElementById("jogo"), ctx = cv.getContext("2d"), teclas = {};
+addEventListener("keydown", e => { teclas[e.code] = true; if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault(); });
+addEventListener("keyup", e => teclas[e.code] = false);
+const estrelas = Array.from({ length: 80 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 0.5 + Math.random() * 2.5 }));
+let estado = "titulo", nave, tiros, inimigos, tirosInimigos, particulas, pontos, quadro, chefe, pausaSoltar = true;
+const bate = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+
+function reiniciar() {
+  nave = { x: W / 2, y: H - 80, w: 30, h: 30, vidas: CONFIG.vidas, recarga: 0, inv: 0 };
+  tiros = []; inimigos = []; tirosInimigos = []; particulas = []; pontos = 0; quadro = 0; chefe = null; estado = "jogando";
+}
+function explodir(x, y, cor, n = 12) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, v = Math.random() * 4; particulas.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 30, cor }); } }
+
+function atualizar() {
+  quadro++;
+  const dx = (teclas.ArrowRight || teclas.KeyD ? 1 : 0) - (teclas.ArrowLeft || teclas.KeyA ? 1 : 0);
+  const dy = (teclas.ArrowDown || teclas.KeyS ? 1 : 0) - (teclas.ArrowUp || teclas.KeyW ? 1 : 0);
+  nave.x = Math.max(20, Math.min(W - 20, nave.x + dx * CONFIG.velocidade));
+  nave.y = Math.max(40, Math.min(H - 30, nave.y + dy * CONFIG.velocidade));
+  if (nave.recarga-- <= 0 && teclas.Space) { tiros.push({ x: nave.x, y: nave.y - 20, w: 4, h: 14 }); nave.recarga = CONFIG.cadenciaTiro; }
+  for (const t of tiros) t.y -= CONFIG.velocidadeTiro;
+  if (!chefe && pontos >= CONFIG.pontosParaChefe) chefe = { x: W / 2, y: -80, w: 160, h: 70, vida: CONFIG.vidaChefe, fase: 0 };
+  if (!chefe && quadro % Math.max(8, Math.round(CONFIG.frequenciaInimigos - pontos / 3)) === 0)
+    inimigos.push({ x: 30 + Math.random() * (W - 60), y: -20, w: 28, h: 24, v: CONFIG.velocidadeInimigo * (0.8 + Math.random() * 0.6), onda: Math.random() * 6 });
+  for (const i of inimigos) {
+    i.y += i.v; i.x += Math.sin((quadro + i.onda * 40) / 30) * 1.5;
+    if (Math.random() < 0.006) tirosInimigos.push({ x: i.x, y: i.y, w: 6, h: 6, vx: 0, vy: 4 });
+  }
+  if (chefe) {
+    chefe.y += (110 - chefe.y) * 0.03; chefe.x = W / 2 + Math.sin(quadro / 60) * 150;
+    if (quadro % 40 === 0) for (let a = -2; a <= 2; a++) tirosInimigos.push({ x: chefe.x, y: chefe.y + 30, w: 8, h: 8, vx: a * 1.3, vy: 4 });
+  }
+  for (const t of tirosInimigos) { t.x += t.vx; t.y += t.vy; }
+  for (const t of tiros) {
+    for (const i of inimigos) if (!i.morto && bate(t, i)) { i.morto = t.usado = true; pontos++; explodir(i.x, i.y, CONFIG.corInimigo); }
+    if (chefe && !t.usado && bate(t, chefe)) { t.usado = true; chefe.vida--; explodir(t.x, t.y, CONFIG.corDestaque, 3); if (chefe.vida <= 0) { explodir(chefe.x, chefe.y, CONFIG.corDestaque, 80); estado = "vitoria"; } }
+  }
+  if (nave.inv > 0) nave.inv--;
+  else for (const o of [...inimigos, ...tirosInimigos, ...(chefe ? [chefe] : [])]) if (!o.morto && bate(o, nave)) {
+    nave.vidas--; nave.inv = 90; o.morto = true; explodir(nave.x, nave.y, CONFIG.corJogador, 20); if (nave.vidas <= 0) estado = "derrota"; break;
+  }
+  tiros = tiros.filter(t => !t.usado && t.y > -20);
+  inimigos = inimigos.filter(i => !i.morto && i.y < H + 30);
+  tirosInimigos = tirosInimigos.filter(t => !t.morto && t.y < H + 10 && t.x > -10 && t.x < W + 10);
+  for (const p of particulas) { p.x += p.vx; p.y += p.vy; p.t--; } particulas = particulas.filter(p => p.t > 0);
+}
+
+function texto(t, x, y, tam = 22, cor = CONFIG.corTexto) { ctx.fillStyle = cor; ctx.font = `bold ${tam}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillText(t, x, y); }
+function retangulo(o, cor) { ctx.fillStyle = cor; ctx.fillRect(o.x - o.w / 2, o.y - o.h / 2, o.w, o.h); }
+
+function desenhar() {
+  ctx.fillStyle = CONFIG.corFundo; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = CONFIG.corTexto; for (const s of estrelas) { s.y = (s.y + s.v) % H; ctx.globalAlpha = s.v / 3; ctx.fillRect(s.x, s.y, 2, 2); } ctx.globalAlpha = 1;
+  if (estado === "titulo") {
+    texto(CONFIG.titulo, W / 2, 260, 46); if (CONFIG.subtitulo) texto(CONFIG.subtitulo, W / 2, 300, 20, CONFIG.corDestaque);
+    texto(CONFIG.objetivo, W / 2, 370, 17); texto("Setas/WASD movem · Espaço atira · P pausa", W / 2, 405, 16, CONFIG.corDestaque);
+    texto("Pressione Enter para começar", W / 2, 480, 22, CONFIG.corJogador); return;
+  }
+  for (const t of tiros) retangulo(t, CONFIG.corDestaque);
+  for (const i of inimigos) retangulo(i, CONFIG.corInimigo);
+  for (const t of tirosInimigos) retangulo(t, CONFIG.corTexto);
+  if (chefe) { retangulo(chefe, CONFIG.corInimigo); ctx.fillStyle = CONFIG.corDestaque; ctx.fillRect(20, 50, (W - 40) * chefe.vida / CONFIG.vidaChefe, 8); }
+  if (!(nave.inv > 0 && Math.floor(nave.inv / 5) % 2)) {
+    ctx.fillStyle = CONFIG.corJogador; ctx.beginPath(); ctx.moveTo(nave.x, nave.y - 18); ctx.lineTo(nave.x + 16, nave.y + 15); ctx.lineTo(nave.x - 16, nave.y + 15); ctx.fill();
+  }
+  for (const p of particulas) { ctx.globalAlpha = p.t / 30; ctx.fillStyle = p.cor; ctx.fillRect(p.x, p.y, 3, 3); } ctx.globalAlpha = 1;
+  ctx.textAlign = "left"; ctx.fillStyle = CONFIG.corTexto; ctx.font = "bold 18px system-ui";
+  ctx.fillText(`Pontos ${pontos}   Vidas ${"▲".repeat(Math.max(0, nave.vidas))}`, 14, 28);
+  if (estado === "pausa") texto("PAUSA", W / 2, H / 2, 44);
+  if (estado === "vitoria") { texto("Vitória!", W / 2, H / 2 - 20, 52, CONFIG.corDestaque); texto("R para jogar de novo", W / 2, H / 2 + 30); }
+  if (estado === "derrota") { texto("Fim de jogo", W / 2, H / 2 - 20, 52, CONFIG.corInimigo); texto(`Pontos ${pontos} · R para tentar de novo`, W / 2, H / 2 + 30); }
+}
+
+function loop() {
+  if (estado === "titulo" && teclas.Enter) reiniciar();
+  if ((estado === "vitoria" || estado === "derrota") && teclas.KeyR) reiniciar();
+  if (teclas.KeyP && pausaSoltar && (estado === "jogando" || estado === "pausa")) estado = estado === "pausa" ? "jogando" : "pausa";
+  pausaSoltar = !teclas.KeyP;
+  if (estado === "jogando") atualizar();
+  desenhar(); requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

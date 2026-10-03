@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITULO__</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; display: grid; place-items: center; font-family: system-ui, sans-serif; }
+  canvas { max-width: 100vw; max-height: 100vh; image-rendering: pixelated; border-radius: 6px; }
+</style>
+</head>
+<body>
+<canvas id="jogo" width="960" height="540"></canvas>
+<script>
+// Protótipo gerado pelo quick-game-mcp (modelo: plataforma).
+// Ajuste o jogo mudando os valores de CONFIG; nenhum outro trecho precisa ser alterado.
+const CONFIG = Object.assign({
+  titulo: "Jogo",
+  subtitulo: "",
+  objetivo: "Colete as estrelas e chegue à bandeira",
+  velocidade: 5,          // velocidade horizontal do jogador
+  aceleracao: 0.8,
+  gravidade: 0.6,
+  forcaPulo: 12,          // altura do pulo
+  pulosNoAr: 1,           // 1 = pulo duplo, 0 = só pulo normal
+  coyoteTime: 6,          // quadros de tolerância para pular depois de sair da borda
+  vidas: 3,
+  velocidadeInimigo: 1.5,
+  corFundo: "#1d2b53",
+  corJogador: "#ffec27",
+  corPlataforma: "#7e8a9a",
+  corInimigo: "#ff004d",
+  corDestaque: "#29adff",
+  corTexto: "#fff1e8",
+}, __AJUSTES__);
+
+// Fases desenhadas em texto: # chão, = plataforma, * estrela, ! espinho, E inimigo, F bandeira, P início.
+const FASES = __FASES__ || [
+  [
+    "                                                            ",
+    "                                                            ",
+    "                                   *                        ",
+    "                                 ====          *            ",
+    "                     *                       =====        F ",
+    "                   =====    E                           ====",
+    "          *               =====                             ",
+    "        =====                         !!!                   ",
+    " P                  E           ###########     E           ",
+    "##########   ####################         ##################",
+  ],
+];
+
+const cv = document.getElementById("jogo"), ctx = cv.getContext("2d");
+const T = 48, teclas = {};
+addEventListener("keydown", e => { teclas[e.code] = true; if (["Space","ArrowUp","ArrowDown"].includes(e.code)) e.preventDefault(); });
+addEventListener("keyup", e => teclas[e.code] = false);
+let estado = "titulo", fase = 0, vidas = CONFIG.vidas, pontos = 0, mundo, jog, cam = 0, pausaSoltar = true;
+
+function carregar(i) {
+  const mapa = FASES[i]; mundo = { solidos: [], estrelas: [], espinhos: [], inimigos: [], bandeira: null, largura: mapa[0].length * T };
+  mapa.forEach((linha, y) => [...linha].forEach((ch, x) => {
+    const r = { x: x * T, y: y * T + (540 - mapa.length * T), w: T, h: T };
+    if (ch === "#" || ch === "=") mundo.solidos.push(Object.assign(r, { fino: ch === "=", h: ch === "=" ? 14 : T }));
+    if (ch === "*") mundo.estrelas.push({ x: r.x + 14, y: r.y + 14, w: 20, h: 20 });
+    if (ch === "!") mundo.espinhos.push({ x: r.x, y: r.y + 24, w: T, h: 24 });
+    if (ch === "E") mundo.inimigos.push({ x: r.x, y: r.y + 12, w: 36, h: 36, vx: CONFIG.velocidadeInimigo });
+    if (ch === "F") mundo.bandeira = { x: r.x + 18, y: r.y - T, w: 12, h: T * 2 };
+    if (ch === "P") mundo.inicio = { x: r.x, y: r.y };
+  }));
+  jog = { x: mundo.inicio.x, y: mundo.inicio.y, w: 32, h: 40, vx: 0, vy: 0, chao: 0, pulosAr: CONFIG.pulosNoAr, soltouPulo: true, esticar: 1 };
+}
+const bate = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+function morrer() {
+  vidas--; if (vidas <= 0) { estado = "derrota"; return; }
+  jog.x = mundo.inicio.x; jog.y = mundo.inicio.y; jog.vx = jog.vy = 0;
+}
+
+function atualizar() {
+  const dir = (teclas.ArrowRight || teclas.KeyD ? 1 : 0) - (teclas.ArrowLeft || teclas.KeyA ? 1 : 0);
+  jog.vx += (dir * CONFIG.velocidade - jog.vx) * (dir ? CONFIG.aceleracao * 0.3 : 0.25);
+  const pulo = teclas.Space || teclas.ArrowUp || teclas.KeyW;
+  if (pulo && jog.soltouPulo) {
+    if (jog.chao > 0) { jog.vy = -CONFIG.forcaPulo; jog.chao = 0; jog.esticar = 1.3; }
+    else if (jog.pulosAr > 0) { jog.vy = -CONFIG.forcaPulo * 0.9; jog.pulosAr--; jog.esticar = 1.3; }
+    jog.soltouPulo = false;
+  }
+  if (!pulo) { jog.soltouPulo = true; if (jog.vy < -3) jog.vy *= 0.6; }   // pulo variável
+  jog.vy = Math.min(jog.vy + CONFIG.gravidade, 16);
+  jog.x += jog.vx;
+  for (const s of mundo.solidos) if (!s.fino && bate(jog, s)) jog.x = jog.vx > 0 ? s.x - jog.w : s.x + s.w;
+  const yAntes = jog.y; jog.y += jog.vy; jog.chao--;
+  for (const s of mundo.solidos) if (bate(jog, s)) {
+    if (jog.vy > 0 && yAntes + jog.h <= s.y + 1) { jog.y = s.y - jog.h; if (jog.vy > 6) jog.esticar = 0.75; jog.vy = 0; jog.chao = CONFIG.coyoteTime; jog.pulosAr = CONFIG.pulosNoAr; }
+    else if (!s.fino && jog.vy < 0) { jog.y = s.y + s.h; jog.vy = 0; }
+  }
+  jog.x = Math.max(0, Math.min(jog.x, mundo.largura - jog.w));
+  jog.esticar += (1 - jog.esticar) * 0.2;
+  if (jog.y > 600) morrer();
+  mundo.estrelas = mundo.estrelas.filter(e => bate(jog, e) ? (pontos++, false) : true);
+  for (const e of mundo.espinhos) if (bate(jog, e)) return morrer();
+  for (const i of mundo.inimigos) {
+    i.x += i.vx;
+    const frente = { x: i.vx > 0 ? i.x + i.w : i.x - 2, y: i.y + i.h + 4, w: 2, h: 2 };
+    if (!mundo.solidos.some(s => bate(frente, s)) || mundo.solidos.some(s => !s.fino && bate(i, s))) i.vx *= -1;
+    if (!i.morto && bate(jog, i)) {
+      if (jog.vy > 0 && jog.y + jog.h - i.y < 18) { i.morto = true; jog.vy = -CONFIG.forcaPulo * 0.7; pontos++; }
+      else return morrer();
+    }
+  }
+  mundo.inimigos = mundo.inimigos.filter(i => !i.morto);
+  if (mundo.bandeira && bate(jog, mundo.bandeira)) {
+    fase++; if (fase >= FASES.length) estado = "vitoria"; else carregar(fase);
+  }
+  cam += (Math.max(0, Math.min(jog.x - 400, mundo.largura - 960)) - cam) * 0.1;
+}
+
+function texto(t, x, y, tam = 24, cor = CONFIG.corTexto) {
+  ctx.fillStyle = cor; ctx.font = `bold ${tam}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.fillText(t, x, y);
+}
+
+function desenhar() {
+  ctx.fillStyle = CONFIG.corFundo; ctx.fillRect(0, 0, 960, 540);
+  if (estado === "titulo") {
+    texto(CONFIG.titulo, 480, 220, 56); if (CONFIG.subtitulo) texto(CONFIG.subtitulo, 480, 265, 22, CONFIG.corDestaque);
+    texto(CONFIG.objetivo, 480, 330, 20); texto("Setas/WASD movem · Espaço pula · P pausa", 480, 370, 18, CONFIG.corDestaque);
+    texto("Pressione Enter para começar", 480, 440, 24, CONFIG.corJogador); return;
+  }
+  ctx.save(); ctx.translate(-Math.round(cam), 0);
+  ctx.fillStyle = CONFIG.corPlataforma; for (const s of mundo.solidos) ctx.fillRect(s.x, s.y, s.w, s.h);
+  ctx.fillStyle = CONFIG.corJogador; for (const e of mundo.estrelas) { ctx.beginPath(); ctx.arc(e.x + 10, e.y + 10, 9 + Math.sin(Date.now() / 200) * 2, 0, 7); ctx.fill(); }
+  ctx.fillStyle = CONFIG.corInimigo;
+  for (const e of mundo.espinhos) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(e.x + k * 16, e.y + 24); ctx.lineTo(e.x + k * 16 + 8, e.y); ctx.lineTo(e.x + k * 16 + 16, e.y + 24); ctx.fill(); }
+  for (const i of mundo.inimigos) ctx.fillRect(i.x, i.y, i.w, i.h);
+  if (mundo.bandeira) { const b = mundo.bandeira; ctx.fillStyle = CONFIG.corTexto; ctx.fillRect(b.x, b.y, 4, b.h); ctx.fillStyle = CONFIG.corDestaque; ctx.fillRect(b.x + 4, b.y, 32, 22); }
+  const sx = 1 / jog.esticar, sy = jog.esticar;
+  ctx.fillStyle = CONFIG.corJogador; ctx.fillRect(jog.x + jog.w * (1 - sx) / 2, jog.y + jog.h * (1 - sy), jog.w * sx, jog.h * sy);
+  ctx.restore();
+  ctx.textAlign = "left"; ctx.fillStyle = CONFIG.corTexto; ctx.font = "bold 20px system-ui";
+  ctx.fillText(`★ ${pontos}   ♥ ${vidas}   Fase ${fase + 1}/${FASES.length}`, 16, 30);
+  if (estado === "pausa") texto("PAUSA", 480, 270, 48);
+  if (estado === "vitoria") { texto("Você venceu!", 480, 240, 56, CONFIG.corJogador); texto(`★ ${pontos} · R para jogar de novo`, 480, 300); }
+  if (estado === "derrota") { texto("Fim de jogo", 480, 240, 56, CONFIG.corInimigo); texto("R para tentar de novo", 480, 300); }
+}
+
+function reiniciar() { fase = 0; vidas = CONFIG.vidas; pontos = 0; carregar(0); estado = "jogando"; }
+function loop() {
+  if (estado === "titulo" && teclas.Enter) reiniciar();
+  if ((estado === "vitoria" || estado === "derrota") && teclas.KeyR) reiniciar();
+  if (teclas.KeyP && pausaSoltar && (estado === "jogando" || estado === "pausa")) { estado = estado === "pausa" ? "jogando" : "pausa"; }
+  pausaSoltar = !teclas.KeyP;
+  if (estado === "jogando") atualizar();
+  desenhar(); requestAnimationFrame(loop);
+}
+carregar(0); loop();
+</script>
+</body>
+</html>

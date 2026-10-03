@@ -1,0 +1,17 @@
+---
+name: nome-da-skill
+description: Uma frase dizendo O QUE a skill faz e QUANDO usar. É isso que o assistente lê para decidir se carrega a skill.
+etapas: [conceito]        # opcional: etapas do pipeline onde ela é recomendada automaticamente
+tags: [palavra, chave]    # opcional: ajuda a busca de listar_skills / recomendar_skills
+---
+
+# Título da skill
+
+## Quando usar
+- ...
+
+## Como fazer
+1. ...
+
+## Exemplos
+...

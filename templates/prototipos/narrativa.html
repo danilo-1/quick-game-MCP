@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITULO__</title>
+<style>
+  :root { --fundo: #2b1d3a; --caixa: #1a1124ee; --texto: #f6e9ff; --destaque: #ff9ecd; }
+  html, body { margin: 0; height: 100%; font-family: Georgia, serif; color: var(--texto); background: var(--fundo); }
+  #cena { position: fixed; inset: 0; display: grid; place-items: center; font-size: 15vmin; transition: background .6s; }
+  #caixa { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); width: min(900px, 92vw); background: var(--caixa);
+           border: 2px solid var(--destaque); border-radius: 12px; padding: 20px 24px; box-sizing: border-box; }
+  #quem { color: var(--destaque); font-weight: bold; margin-bottom: 6px; }
+  #fala { font-size: 1.15rem; line-height: 1.5; min-height: 3em; }
+  #opcoes { display: grid; gap: 8px; margin-top: 14px; }
+  button { font: inherit; text-align: left; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--destaque); background: transparent; color: var(--texto); cursor: pointer; }
+  button:hover, button:focus { background: var(--destaque); color: #000; outline: none; }
+  #titulo { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; gap: 12px; background: var(--fundo); z-index: 2; }
+  #titulo h1 { font-size: clamp(2rem, 7vw, 4rem); margin: 0; }
+</style>
+</head>
+<body>
+<div id="titulo"><h1>__TITULO__</h1><div id="sub"></div><button id="comecar" style="justify-self:center">Começar</button></div>
+<div id="cena"></div>
+<div id="caixa"><div id="quem"></div><div id="fala"></div><div id="opcoes"></div></div>
+<script>
+// Protótipo gerado pelo quick-game-mcp (modelo: narrativa — visual novel / história com escolhas).
+// A história inteira está em CENAS. Cada cena tem: quem fala, texto, emoji/cor de cenário e escolhas.
+const CONFIG = Object.assign({ titulo: "Jogo", subtitulo: "", corFundo: "#2b1d3a", corDestaque: "#ff9ecd", corTexto: "#f6e9ff", velocidadeTexto: 25 }, __AJUSTES__);
+const CENAS = __CENAS__ || {
+  inicio: { quem: "Narrador", texto: "Você acorda em um lugar desconhecido. Há uma porta à esquerda e uma janela à direita.", cenario: "🌙", cor: "#2b1d3a",
+            escolhas: [{ texto: "Abrir a porta", ir: "porta", marca: "corajoso" }, { texto: "Olhar pela janela", ir: "janela" }] },
+  porta:  { quem: "Voz misteriosa", texto: "Finalmente você chegou. Estávamos esperando.", cenario: "🚪", cor: "#3a1d2b",
+            escolhas: [{ texto: "Quem é você?", ir: "final_bom", se: "corajoso" }, { texto: "Fugir", ir: "final_ruim" }] },
+  janela: { quem: "Narrador", texto: "Lá fora, uma cidade inteira flutua entre as nuvens.", cenario: "🏙️", cor: "#1d2b3a",
+            escolhas: [{ texto: "Voltar e abrir a porta", ir: "porta", marca: "corajoso" }] },
+  final_bom:  { quem: "Narrador", texto: "Sua coragem abriu um novo caminho. FIM (bom).", cenario: "🌅", cor: "#3a2b1d", fim: true },
+  final_ruim: { quem: "Narrador", texto: "Você correu, mas a pergunta nunca saiu da sua cabeça. FIM.", cenario: "🌫️", cor: "#222", fim: true },
+};
+
+const $ = id => document.getElementById(id), marcas = new Set();
+document.documentElement.style.setProperty("--fundo", CONFIG.corFundo);
+document.documentElement.style.setProperty("--destaque", CONFIG.corDestaque);
+document.documentElement.style.setProperty("--texto", CONFIG.corTexto);
+$("sub").textContent = CONFIG.subtitulo;
+let digitando = null;
+
+function mostrar(id) {
+  const c = CENAS[id]; if (!c) return alert(`Cena "${id}" não existe`);
+  $("cena").textContent = c.cenario || ""; $("cena").style.background = c.cor || CONFIG.corFundo;
+  $("quem").textContent = c.quem || ""; $("opcoes").innerHTML = "";
+  clearInterval(digitando); let i = 0; $("fala").textContent = "";
+  const terminar = () => { clearInterval(digitando); $("fala").textContent = c.texto; opcoes(c); };
+  digitando = setInterval(() => { $("fala").textContent = c.texto.slice(0, ++i); if (i >= c.texto.length) terminar(); }, CONFIG.velocidadeTexto);
+  $("caixa").onclick = e => { if (e.target.tagName !== "BUTTON" && $("opcoes").childElementCount === 0) terminar(); };
+}
+function opcoes(c) {
+  if ($("opcoes").childElementCount) return;
+  const lista = c.fim ? [{ texto: "Jogar de novo", ir: "inicio", reset: true }] : (c.escolhas || []).filter(o => !o.se || marcas.has(o.se));
+  for (const o of lista) {
+    const b = document.createElement("button"); b.textContent = o.texto;
+    b.onclick = () => { if (o.reset) marcas.clear(); if (o.marca) marcas.add(o.marca); mostrar(o.ir); };
+    $("opcoes").append(b);
+  }
+  $("opcoes").querySelector("button")?.focus();
+}
+$("comecar").onclick = () => { $("titulo").remove(); mostrar("inicio"); };
+</script>
+</body>
+</html>

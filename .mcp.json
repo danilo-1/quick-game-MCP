@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "quick-game": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["scripts/iniciar.mjs"],
+      "env": {}
+    }
+  }
+}
